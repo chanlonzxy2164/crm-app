@@ -1,0 +1,124 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Company {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users        User[]
+  customers    Customer[]
+  deals        Deal[]
+  tasks        Task[]
+  interactions Interaction[]
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   @default("MEMBER") // ADMIN, MEMBER
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id])
+
+  tasks     Task[]
+  deals     Deal[]
+  messages  ChatMessage[]
+  customers Customer[]
+  interactions Interaction[]
+}
+
+model Customer {
+  id             String   @id @default(uuid())
+  firstName      String
+  lastName       String
+  companyName    String?
+  email          String?
+  phoneNumber    String?
+  status         String   @default("LEAD") // LEAD, ACTIVE, INACTIVE
+  lastContactAt  DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  interactions   Interaction[]
+  deals          Deal[]
+
+  companyId      String?
+  company        Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  userId         String?
+  user           User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model Interaction {
+  id         String   @id @default(uuid())
+  type       String   // EMAIL, CALL, MEETING
+  notes      String?
+  date       DateTime @default(now())
+  
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  companyId  String?
+  company    Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model Deal {
+  id             String   @id @default(uuid())
+  name           String
+  amount         Float
+  stage          String   // PROSPECTING, QUALIFICATION, PROPOSAL, WON, LOST
+  closeDate      DateTime?
+  stageUpdatedAt DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  customerId     String
+  customer       Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  
+  userId         String?
+  user           User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  companyId      String?
+  company        Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+model Task {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  dueDate     DateTime?
+  isCompleted Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  companyId   String?
+  company     Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid())
+  content   String
+  createdAt DateTime @default(now())
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
