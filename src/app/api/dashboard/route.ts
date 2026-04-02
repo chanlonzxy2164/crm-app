@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     const companyId = session.user.companyId;
+    const userId = session.user.id;
 
     const searchParams = request.nextUrl.searchParams;
     const period = searchParams.get('period') || 'this_month';
@@ -68,6 +69,23 @@ export async function GET(request: NextRequest) {
 
     const completedTasks = await prisma.task.count({ where: { companyId, isCompleted: true } });
     const activeTasks = await prisma.task.count({ where: { companyId, isCompleted: false } });
+
+    // 自身の成績ステータス
+    const myWonDealsCount = await prisma.deal.count({
+      where: { userId, companyId, stage: "WON", updatedAt: { gte: startDate, lte: endDate } }
+    });
+    const myCreatedDealsCount = await prisma.deal.count({
+      where: { userId, companyId, createdAt: { gte: startDate, lte: endDate } }
+    });
+    const myAppointmentsCount = await prisma.interaction.count({
+      where: { userId, companyId, type: "MEETING", date: { gte: startDate, lte: endDate } }
+    });
+    const myCallsCount = await prisma.interaction.count({
+      where: { userId, companyId, type: "CALL", date: { gte: startDate, lte: endDate } }
+    });
+    const myEmailsCount = await prisma.interaction.count({
+      where: { userId, companyId, type: "EMAIL", date: { gte: startDate, lte: endDate } }
+    });
 
     // チャート用データ（期間に応じて日別・月別にスケール変更）
     const allWonDeals = await prisma.deal.findMany({ 
@@ -131,6 +149,55 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // 自身の行動履歴チャート用データ生成
+    let myActivityChartData = [];
+    const myInteractions = await prisma.interaction.findMany({
+      where: { userId, companyId, date: { gte: startDate, lte: endDate } }
+    });
+
+    if (diffDays > 60) {
+      for(let i = 11; i >= 0; i--) {
+        const d = new Date(endDate.getFullYear(), endDate.getMonth() - i, 1);
+        const mStart = new Date(d.getFullYear(), d.getMonth(), 1);
+        const mEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
+        
+        if (mEnd < startDate && i !== 11) continue; 
+        
+        const mInter = myInteractions.filter(x => {
+            const ud = new Date(x.date);
+            return ud >= mStart && ud <= mEnd;
+        });
+        
+        myActivityChartData.push({
+            name: `${d.getFullYear()}/${d.getMonth()+1}`,
+            架電: mInter.filter(x => x.type === 'CALL').length,
+            メール: mInter.filter(x => x.type === 'EMAIL').length,
+            商談: mInter.filter(x => x.type === 'MEETING').length,
+            合計: mInter.length,
+        });
+      }
+    } else {
+      const daysToShow = Math.min(diffDays || 1, 31);
+      const actualStartDate = new Date(endDate);
+      actualStartDate.setDate(endDate.getDate() - daysToShow + 1);
+      
+      for (let i = 0; i < daysToShow; i++) {
+        const targetDate = new Date(actualStartDate);
+        targetDate.setDate(actualStartDate.getDate() + i);
+        const dateStr = targetDate.toISOString().split('T')[0];
+        
+        const dayInter = myInteractions.filter(inter => new Date(inter.date).toISOString().split('T')[0] === dateStr);
+        
+        myActivityChartData.push({
+          name: `${targetDate.getMonth()+1}/${targetDate.getDate()}`,
+          架電: dayInter.filter(x => x.type === 'CALL').length,
+          メール: dayInter.filter(x => x.type === 'EMAIL').length,
+          商談: dayInter.filter(x => x.type === 'MEETING').length,
+          合計: dayInter.length,
+        });
+      }
+    }
+
     return NextResponse.json({
       newCustomers,
       wonDeals,
@@ -142,7 +209,15 @@ export async function GET(request: NextRequest) {
         completed: completedTasks,
         active: activeTasks
       },
-      chartData
+      chartData,
+      myStats: {
+        contracts: myWonDealsCount,
+        opportunities: myCreatedDealsCount,
+        appointments: myAppointmentsCount,
+        calls: myCallsCount,
+        emails: myEmailsCount
+      },
+      myActivityChartData
     });
   } catch (error) {
     console.error("Dashboard API Error:", error);

@@ -24,7 +24,12 @@ export default function TasksPage() {
     try {
       const res = await fetch('/api/tasks');
       const data = await res.json();
-      setTasks(data);
+      if (Array.isArray(data)) {
+        setTasks(data);
+      } else {
+        console.error('Expected array, got:', data);
+        setTasks([]);
+      }
     } catch (err) {
       console.error(err);
     } finally {

@@ -54,7 +54,12 @@ export default function CustomerDetailPage() {
         return;
       }
       const data = await res.json();
-      setCustomer(data);
+      if (data && !data.error && data.id) {
+        setCustomer(data);
+      } else {
+        console.error('API Error:', data);
+        setCustomer(null);
+      }
     } catch (err) {
       console.error(err);
     } finally {

@@ -36,9 +36,16 @@ export default function CustomersPage() {
     try {
       const res = await fetch('/api/customers');
       const data = await res.json();
-      setCustomers(data);
+      if (Array.isArray(data)) {
+        setCustomers(data);
+      } else {
+        console.error('Expected an array of customers, but got:', data);
+        if (data.error) alert(data.error);
+        setCustomers([]);
+      }
     } catch (err) {
       console.error(err);
+      setCustomers([]);
     } finally {
       setIsLoading(false);
     }
@@ -57,6 +64,9 @@ export default function CustomersPage() {
         setFormData({ firstName: '', lastName: '', companyName: '', email: '', phoneNumber: '' });
         setIsFormOpen(false);
         fetchCustomers();
+      } else {
+        const errorData = await res.json();
+        alert(errorData.error || '登録に失敗しました');
       }
     } catch (err) {
       console.error(err);
@@ -152,6 +162,8 @@ export default function CustomersPage() {
   };
 
   const getCompanyGroupedData = () => {
+    if (!Array.isArray(customers)) return [];
+    
     const grouped = customers.reduce((acc, curr) => {
       const company = curr.companyName || '会社名未登録 (個人・その他)';
       if (!acc[company]) {

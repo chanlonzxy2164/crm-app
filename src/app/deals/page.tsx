@@ -74,7 +74,12 @@ export default function DealsPage() {
     try {
       const res = await fetch('/api/deals');
       const data = await res.json();
-      setDeals(data);
+      if (Array.isArray(data)) {
+        setDeals(data);
+      } else {
+        console.error('Expected array, got:', data);
+        setDeals([]);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -86,7 +91,12 @@ export default function DealsPage() {
     try {
       const res = await fetch('/api/customers');
       const data = await res.json();
-      setCustomers(data);
+      if (Array.isArray(data)) {
+        setCustomers(data);
+      } else {
+        console.error('Expected array, got:', data);
+        setCustomers([]);
+      }
     } catch (err) {
       console.error(err);
     }

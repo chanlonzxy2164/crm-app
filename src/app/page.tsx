@@ -1,12 +1,15 @@
 "use client";
 import { useState, useEffect } from 'react';
 import DashboardCharts from "@/components/DashboardCharts";
-import { Users, Presentation, Target, MailCheck, LayoutTemplate, X, Grab, Calendar } from "lucide-react";
+import MyActivityChart from "@/components/MyActivityChart";
+import { Users, Presentation, Target, MailCheck, LayoutTemplate, X, Grab, Calendar, Phone, Mail, Handshake, BarChart } from "lucide-react";
 
 const INITIAL_WIDGETS = [
-  { id: 'stats', type: 'StatsWidget', title: 'KPIサマリー', visible: true },
-  { id: 'charts', type: 'ChartsWidget', title: '売上・タスクグラフ', visible: true },
-  { id: 'activity', type: 'ActivityWidget', title: '最近の活動', visible: true }
+  { id: 'my-stats', type: 'MyStatsWidget', title: '自身の成績 (KPI)', visible: true },
+  { id: 'my-activity-chart', type: 'MyActivityChartWidget', title: '自身の行動履歴グラフ', visible: true },
+  { id: 'stats', type: 'StatsWidget', title: '会社全体のKPIサマリー', visible: true },
+  { id: 'charts', type: 'ChartsWidget', title: '会社全体の売上・タスクグラフ', visible: true },
+  { id: 'activity', type: 'ActivityWidget', title: '会社全体の最近の活動', visible: true }
 ];
 
 export default function Home() {
@@ -55,6 +58,46 @@ export default function Home() {
       default: return <span className="badge">{type}</span>;
     }
   };
+
+  const MyStatsWidget = () => (
+    <div className="dashboard-grid" style={{ marginBottom: '24px' }}>
+      <div className="glass-panel stat-card" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 100%)', border: '1px solid var(--primary)' }}>
+        <p className="stat-title" style={{ color: 'var(--primary)', fontWeight: 'bold' }}>自身の成約数</p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <p className="stat-value">{isLoading ? '-' : dashboardData?.myStats?.contracts || 0}</p>
+          <Target size={32} color="var(--primary)" opacity={0.6}/>
+        </div>
+      </div>
+      <div className="glass-panel stat-card" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 100%)' }}>
+        <p className="stat-title">自身の商談発生数</p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <p className="stat-value">{isLoading ? '-' : dashboardData?.myStats?.opportunities || 0}</p>
+          <BarChart size={32} color="var(--secondary)" opacity={0.6}/>
+        </div>
+      </div>
+      <div className="glass-panel stat-card" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 100%)' }}>
+        <p className="stat-title">自身のアポ獲得数</p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <p className="stat-value">{isLoading ? '-' : dashboardData?.myStats?.appointments || 0}</p>
+          <Handshake size={32} color="var(--success)" opacity={0.6}/>
+        </div>
+      </div>
+      <div className="glass-panel stat-card" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 100%)' }}>
+        <p className="stat-title">自身の架電数</p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <p className="stat-value">{isLoading ? '-' : dashboardData?.myStats?.calls || 0}</p>
+          <Phone size={32} color="var(--warning)" opacity={0.6}/>
+        </div>
+      </div>
+      <div className="glass-panel stat-card" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 100%)' }}>
+        <p className="stat-title">自身のメール数</p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <p className="stat-value">{isLoading ? '-' : dashboardData?.myStats?.emails || 0}</p>
+          <Mail size={32} color="var(--primary)" opacity={0.6}/>
+        </div>
+      </div>
+    </div>
+  );
 
   const StatsWidget = () => (
     <div className="dashboard-grid" style={{ marginBottom: '24px' }}>
@@ -197,6 +240,8 @@ export default function Home() {
               )}
               
               <div style={{ opacity: isEditMode ? 0.8 : 1, transition: 'opacity 0.2s', padding: isEditMode ? '8px' : '0', border: isEditMode ? '2px dashed rgba(0,0,0,0.1)' : 'none', borderRadius: '16px' }}>
+                {widget.type === 'MyStatsWidget' && <MyStatsWidget />}
+                {widget.type === 'MyActivityChartWidget' && <MyActivityChart data={dashboardData?.myActivityChartData} />}
                 {widget.type === 'StatsWidget' && <StatsWidget />}
                 {widget.type === 'ChartsWidget' && <DashboardCharts taskProgress={dashboardData?.taskProgress} chartData={dashboardData?.chartData} dealsByStage={dashboardData?.dealsByStage} />}
                 {widget.type === 'ActivityWidget' && <ActivityWidget />}

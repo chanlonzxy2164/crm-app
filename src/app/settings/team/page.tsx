@@ -15,7 +15,13 @@ export default function SettingsPage() {
     try {
       const res = await fetch('/api/settings/users');
       const data = await res.json();
-      setUsers(data);
+      if (Array.isArray(data)) {
+        setUsers(data);
+      } else {
+        console.error('Expected array, got:', data);
+        if (data.error) alert(data.error);
+        setUsers([]);
+      }
     } catch (err) {
       console.error(err);
     } finally {

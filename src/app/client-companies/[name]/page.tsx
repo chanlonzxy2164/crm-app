@@ -75,7 +75,12 @@ export default function ClientCompanyPage() {
         return;
       }
       const fetched = await res.json();
-      setData(fetched);
+      if (fetched && !fetched.error && fetched.companyName) {
+        setData(fetched);
+      } else {
+        console.error('API Error:', fetched);
+        setData(null);
+      }
     } catch (err) {
       console.error(err);
     } finally {
