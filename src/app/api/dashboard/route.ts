@@ -148,15 +148,18 @@ export async function GET(request: NextRequest) {
       } else {
         const daysToShow = Math.min(diffDays || 1, 31);
         const actStart = new Date(end); actStart.setDate(end.getDate() - daysToShow + 1);
+        
+        const locDateStr = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
         for (let i = 0; i < daysToShow; i++) {
           const tDate = new Date(actStart); tDate.setDate(actStart.getDate() + i);
-          const dateStr = tDate.toISOString().split('T')[0];
+          const dateStr = locDateStr(tDate);
           
-          const dayDeals = allWonDeals.filter(d => new Date(d.updatedAt).toISOString().split('T')[0] === dateStr);
-          const dayInter = allInteractions.filter(inter => new Date(inter.date).toISOString().split('T')[0] === dateStr);
+          const dayDeals = allWonDeals.filter(d => locDateStr(new Date(d.updatedAt)) === dateStr);
+          const dayInter = allInteractions.filter(inter => locDateStr(new Date(inter.date)) === dateStr);
           chartData.push({ name: `${tDate.getMonth()+1}/${tDate.getDate()}`, 契約金額: dayDeals.reduce((sum, d) => sum + d.amount, 0), メンバー活動: dayInter.length * 5 });
 
-          const myDayInter = myInteractions.filter(inter => new Date(inter.date).toISOString().split('T')[0] === dateStr);
+          const myDayInter = myInteractions.filter(inter => locDateStr(new Date(inter.date)) === dateStr);
           myActData.push({
             name: `${tDate.getMonth()+1}/${tDate.getDate()}`,
             架電: myDayInter.filter(x => x.type === 'CALL').length,

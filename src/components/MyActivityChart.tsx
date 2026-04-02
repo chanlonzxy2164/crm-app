@@ -21,8 +21,8 @@ export default function MyActivityChart({ data, compareStats, myStats, title = "
   ] : [];
 
   return (
-    <div className="glass-panel" style={{ padding: '24px', flex: 1 }}>
-      <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>{title}</h2>
+    <div style={{ flex: 1 }}>
+      {title && <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>{title}</h2>}
       
       <div style={{ display: 'flex', gap: '24px', flexDirection: hasCompare ? 'row' : 'column' }}>
         {hasCompare && (

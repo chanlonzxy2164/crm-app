@@ -257,7 +257,7 @@ export default function Home() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
         <div>
           <h1 className="page-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <LayoutTemplate size={28} color="var(--primary)" /> カスタムダッシュボード
+            <LayoutTemplate size={28} color="var(--primary)" /> ダッシュボード
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '4px' }}>ウィジェットを自由に追加・編集できます</p>
         </div>
@@ -315,7 +315,7 @@ export default function Home() {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
         {widgets.filter(w => isEditMode || w.visible).map(widget => (
-          <div key={widget.id} className="glass-panel" style={{ position: 'relative', opacity: (!widget.visible && isEditMode) ? 0.5 : 1, border: isEditMode ? '2px dashed rgba(0,0,0,0.1)' : 'none' }}>
+          <div key={widget.id} className="glass-panel" style={{ padding: '24px', position: 'relative', opacity: (!widget.visible && isEditMode) ? 0.5 : 1, border: isEditMode ? '2px dashed rgba(0,0,0,0.1)' : 'none' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid rgba(0,0,0,0.05)', paddingBottom: '12px' }}>
               <h2 style={{ fontSize: '18px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 {isEditMode && <Grab size={20} color="var(--text-muted)" style={{ cursor: 'grab' }} />}
