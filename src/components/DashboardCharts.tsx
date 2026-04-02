@@ -24,6 +24,9 @@ export default function DashboardCharts({ taskProgress, chartData, dealsByStage 
                 <YAxis stroke="var(--text-muted)" />
                 <Tooltip contentStyle={{ background: 'var(--glass-bg)', borderRadius: '8px', border: '1px solid var(--glass-border)' }} />
                 <Line type="monotone" dataKey="契約金額" stroke="var(--primary)" strokeWidth={3} activeDot={{ r: 8 }} />
+                {chartData[0] && chartData[0]['契約金額 (比較)'] !== undefined && (
+                  <Line type="monotone" dataKey="契約金額 (比較)" stroke="#9ca3af" strokeWidth={2} strokeDasharray="5 5" />
+                )}
               </LineChart>
             </ResponsiveContainer>
           ) : (

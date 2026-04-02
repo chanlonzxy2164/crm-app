@@ -114,23 +114,23 @@ export async function GET(request: NextRequest) {
     const activeTasks = await prisma.task.count({ where: { companyId, isCompleted: false } });
 
     // チャート用データ生成関数
-    const generateChartData = async () => {
-      const allWonDeals = await prisma.deal.findMany({ where: { companyId, stage: "WON", updatedAt: { gte: startDate, lte: endDate } } });
-      const allInteractions = await prisma.interaction.findMany({ where: { companyId, date: { gte: startDate, lte: endDate } } });
+    const generateChartData = async (start: Date, end: Date) => {
+      const allWonDeals = await prisma.deal.findMany({ where: { companyId, stage: "WON", updatedAt: { gte: start, lte: end } } });
+      const allInteractions = await prisma.interaction.findMany({ where: { companyId, date: { gte: start, lte: end } } });
       
       const filterMy = isCompanyWideStats ? {} : { userId: targetUserId };
-      const myInteractions = await prisma.interaction.findMany({ where: { ...filterMy, companyId, date: { gte: startDate, lte: endDate } } });
+      const myInteractions = await prisma.interaction.findMany({ where: { ...filterMy, companyId, date: { gte: start, lte: end } } });
 
       let chartData = [];
       let myActData = [];
-      const diffDays = Math.ceil(Math.abs(endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+      const diffDays = Math.ceil(Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
 
       if (diffDays > 60) {
         for(let i = 11; i >= 0; i--) {
-          const d = new Date(endDate.getFullYear(), endDate.getMonth() - i, 1);
+          const d = new Date(end.getFullYear(), end.getMonth() - i, 1);
           const mStart = new Date(d.getFullYear(), d.getMonth(), 1);
           const mEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
-          if (mEnd < startDate && i !== 11) continue; 
+          if (mEnd < start && i !== 11) continue; 
           
           const mDeals = allWonDeals.filter(x => new Date(x.updatedAt) >= mStart && new Date(x.updatedAt) <= mEnd);
           const mInter = allInteractions.filter(x => new Date(x.date) >= mStart && new Date(x.date) <= mEnd);
@@ -147,7 +147,7 @@ export async function GET(request: NextRequest) {
         }
       } else {
         const daysToShow = Math.min(diffDays || 1, 31);
-        const actStart = new Date(endDate); actStart.setDate(endDate.getDate() - daysToShow + 1);
+        const actStart = new Date(end); actStart.setDate(end.getDate() - daysToShow + 1);
         for (let i = 0; i < daysToShow; i++) {
           const tDate = new Date(actStart); tDate.setDate(actStart.getDate() + i);
           const dateStr = tDate.toISOString().split('T')[0];
@@ -169,7 +169,18 @@ export async function GET(request: NextRequest) {
       return { chartData, myActivityChartData: myActData };
     };
 
-    const charts = await generateChartData();
+    const charts = await generateChartData(startDate, endDate);
+    const compareCharts = hasCompare ? await generateChartData(compStartDate, compEndDate) : null;
+
+    // zip the compareChartData into the main chartData
+    const zippedChartData = charts.chartData.map((d: any, index: number) => {
+      const copy = { ...d };
+      if (compareCharts && compareCharts.chartData[index]) {
+        copy['契約金額 (比較)'] = compareCharts.chartData[index].契約金額;
+        copy['メンバー活動 (比較)'] = compareCharts.chartData[index].メンバー活動;
+      }
+      return copy;
+    });
 
     return NextResponse.json({
       ...currentStats,
@@ -177,8 +188,9 @@ export async function GET(request: NextRequest) {
       dealsByStage,
       recentActivities,
       taskProgress: { completed: completedTasks, active: activeTasks },
-      chartData: charts.chartData,
+      chartData: zippedChartData,
       myActivityChartData: charts.myActivityChartData,
+      compareChartData: compareCharts ? compareCharts.chartData : undefined,
       teamMembers,
       targetUserId,
       isCompanyWideStats

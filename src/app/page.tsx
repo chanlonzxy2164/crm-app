@@ -96,8 +96,8 @@ export default function Home() {
     }
 
     if (diff === 0) return <span style={{ fontSize: '13px', color: 'var(--text-muted)', marginLeft: '8px', fontWeight: 'bold' }}>±0 {percentStr}</span>;
-    if (diff > 0) return <span style={{ fontSize: '13px', color: 'var(--success)', marginLeft: '8px', fontWeight: 'bold' }}>▲+{diff} <span style={{ fontSize: '11px', opacity: 0.8 }}>{percentStr}</span></span>;
-    return <span style={{ fontSize: '13px', color: 'var(--danger)', marginLeft: '8px', fontWeight: 'bold' }}>▼{diff} <span style={{ fontSize: '11px', opacity: 0.8 }}>{percentStr}</span></span>;
+    if (diff > 0) return <span style={{ fontSize: '13px', color: 'var(--success)', marginLeft: '8px', fontWeight: 'bold' }}>↑+{diff} <span style={{ fontSize: '11px', opacity: 0.8 }}>{percentStr}</span></span>;
+    return <span style={{ fontSize: '13px', color: 'var(--danger)', marginLeft: '8px', fontWeight: 'bold' }}>↓{diff} <span style={{ fontSize: '11px', opacity: 0.8 }}>{percentStr}</span></span>;
   };
 
   const MyStatsWidget = () => (
