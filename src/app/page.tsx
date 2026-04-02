@@ -2,11 +2,12 @@
 import { useState, useEffect } from 'react';
 import DashboardCharts from "@/components/DashboardCharts";
 import MyActivityChart from "@/components/MyActivityChart";
-import { Users, Presentation, Target, MailCheck, LayoutTemplate, X, Grab, Calendar, Phone, Mail, Handshake, BarChart } from "lucide-react";
+import { Users, Presentation, Target, MailCheck, LayoutTemplate, X, Grab, Calendar, Phone, Mail, Handshake, BarChart, ArrowRight, UserCircle } from "lucide-react";
+import Link from "next/link";
 
 const INITIAL_WIDGETS = [
-  { id: 'my-stats', type: 'MyStatsWidget', title: '自身の成績 (KPI)', visible: true },
-  { id: 'my-activity-chart', type: 'MyActivityChartWidget', title: '自身の行動履歴グラフ', visible: true },
+  { id: 'my-stats', type: 'MyStatsWidget', title: '自分の成績 (KPI)', visible: true },
+  { id: 'my-activity-chart', type: 'MyActivityChartWidget', title: '自分の行動履歴グラフ', visible: true },
   { id: 'stats', type: 'StatsWidget', title: '会社全体のKPIサマリー', visible: true },
   { id: 'charts', type: 'ChartsWidget', title: '会社全体の売上・タスクグラフ', visible: true },
   { id: 'activity', type: 'ActivityWidget', title: '会社全体の最近の活動', visible: true }
@@ -20,15 +21,23 @@ export default function Home() {
   const [period, setPeriod] = useState("this_month");
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
+  
+  const [targetUser, setTargetUser] = useState(""); // "" means self
+  const [compareMode, setCompareMode] = useState("none");
 
-  // 初回ロード時およびperiod変更時にダッシュボードのデータを取得
+  // 初回ロード時および設定変更時にダッシュボードのデータを取得
   useEffect(() => {
-    if (period === 'custom' && (!customStartDate || !customEndDate)) return; // カスタムの場合は両方入力されるまでfetchしない
+    if (period === 'custom' && (!customStartDate || !customEndDate)) return; 
     setIsLoading(true);
     let url = `/api/dashboard?period=${period}`;
     if (period === 'custom') {
       url += `&startDate=${customStartDate}&endDate=${customEndDate}`;
     }
+    url += `&compareMode=${compareMode}`;
+    if (targetUser) {
+      url += `&targetUser=${targetUser}`;
+    }
+
     fetch(url)
       .then(res => res.json())
       .then(data => {
@@ -39,7 +48,7 @@ export default function Home() {
         console.error(err);
         setIsLoading(false);
       });
-  }, [period]);
+  }, [period, targetUser, compareMode, customStartDate, customEndDate]);
 
   const toggleWidget = (id: string) => {
     setWidgets(widgets.map(w => w.id === id ? { ...w, visible: !w.visible } : w));
@@ -59,74 +68,132 @@ export default function Home() {
     }
   };
 
+  const getTargetLabel = () => {
+    if (targetUser === 'all') return '会社全体';
+    if (!targetUser) return '自分の';
+    const member = dashboardData?.teamMembers?.find((m: any) => m.id === targetUser);
+    return member ? `${member.name}さんの` : '自分の';
+  };
+
+  // 比較の差分表示用コンポーネント
+  const DeltaIndicator = ({ current, previous }: { current: number, previous?: number }) => {
+    if (previous === undefined || compareMode === 'none') return null;
+    const diff = current - previous;
+    if (diff === 0) return <span style={{ fontSize: '13px', color: 'var(--text-muted)', marginLeft: '8px', fontWeight: 'bold' }}>±0</span>;
+    if (diff > 0) return <span style={{ fontSize: '13px', color: 'var(--success)', marginLeft: '8px', fontWeight: 'bold' }}>▲+{diff}</span>;
+    return <span style={{ fontSize: '13px', color: 'var(--danger)', marginLeft: '8px', fontWeight: 'bold' }}>▼{diff}</span>;
+  };
+
   const MyStatsWidget = () => (
-    <div className="dashboard-grid" style={{ marginBottom: '24px' }}>
-      <div className="glass-panel stat-card" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 100%)', border: '1px solid var(--primary)' }}>
-        <p className="stat-title" style={{ color: 'var(--primary)', fontWeight: 'bold' }}>自身の成約数</p>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <p className="stat-value">{isLoading ? '-' : dashboardData?.myStats?.contracts || 0}</p>
-          <Target size={32} color="var(--primary)" opacity={0.6}/>
+    <div style={{ marginBottom: '24px' }}>
+      <h2 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <UserCircle size={20} color="var(--primary)" /> {getTargetLabel()}成績 (KPI)
+      </h2>
+      <div className="dashboard-grid">
+        <div className="glass-panel stat-card" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 100%)', border: '1px solid var(--primary)' }}>
+          <p className="stat-title" style={{ color: 'var(--primary)', fontWeight: 'bold' }}>成約数</p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline' }}>
+              <p className="stat-value">{isLoading ? '-' : dashboardData?.myStats?.contracts || 0}</p>
+              <DeltaIndicator current={dashboardData?.myStats?.contracts || 0} previous={dashboardData?.compareStats?.myStats?.contracts} />
+            </div>
+            <Target size={32} color="var(--primary)" opacity={0.6}/>
+          </div>
         </div>
-      </div>
-      <div className="glass-panel stat-card" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 100%)' }}>
-        <p className="stat-title">自身の商談発生数</p>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <p className="stat-value">{isLoading ? '-' : dashboardData?.myStats?.opportunities || 0}</p>
-          <BarChart size={32} color="var(--secondary)" opacity={0.6}/>
+        <div className="glass-panel stat-card" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 100%)' }}>
+          <p className="stat-title">商談発生数</p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline' }}>
+              <p className="stat-value">{isLoading ? '-' : dashboardData?.myStats?.opportunities || 0}</p>
+              <DeltaIndicator current={dashboardData?.myStats?.opportunities || 0} previous={dashboardData?.compareStats?.myStats?.opportunities} />
+            </div>
+            <BarChart size={32} color="var(--secondary)" opacity={0.6}/>
+          </div>
         </div>
-      </div>
-      <div className="glass-panel stat-card" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 100%)' }}>
-        <p className="stat-title">自身のアポ獲得数</p>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <p className="stat-value">{isLoading ? '-' : dashboardData?.myStats?.appointments || 0}</p>
-          <Handshake size={32} color="var(--success)" opacity={0.6}/>
+        <div className="glass-panel stat-card" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 100%)' }}>
+          <p className="stat-title">アポ獲得数</p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline' }}>
+              <p className="stat-value">{isLoading ? '-' : dashboardData?.myStats?.appointments || 0}</p>
+              <DeltaIndicator current={dashboardData?.myStats?.appointments || 0} previous={dashboardData?.compareStats?.myStats?.appointments} />
+            </div>
+            <Handshake size={32} color="var(--success)" opacity={0.6}/>
+          </div>
         </div>
-      </div>
-      <div className="glass-panel stat-card" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 100%)' }}>
-        <p className="stat-title">自身の架電数</p>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <p className="stat-value">{isLoading ? '-' : dashboardData?.myStats?.calls || 0}</p>
-          <Phone size={32} color="var(--warning)" opacity={0.6}/>
+        <div className="glass-panel stat-card" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 100%)' }}>
+          <p className="stat-title">架電数</p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline' }}>
+              <p className="stat-value">{isLoading ? '-' : dashboardData?.myStats?.calls || 0}</p>
+              <DeltaIndicator current={dashboardData?.myStats?.calls || 0} previous={dashboardData?.compareStats?.myStats?.calls} />
+            </div>
+            <Phone size={32} color="var(--warning)" opacity={0.6}/>
+          </div>
         </div>
-      </div>
-      <div className="glass-panel stat-card" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 100%)' }}>
-        <p className="stat-title">自身のメール数</p>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <p className="stat-value">{isLoading ? '-' : dashboardData?.myStats?.emails || 0}</p>
-          <Mail size={32} color="var(--primary)" opacity={0.6}/>
+        <div className="glass-panel stat-card" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 100%)' }}>
+          <p className="stat-title">メール数</p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline' }}>
+              <p className="stat-value">{isLoading ? '-' : dashboardData?.myStats?.emails || 0}</p>
+              <DeltaIndicator current={dashboardData?.myStats?.emails || 0} previous={dashboardData?.compareStats?.myStats?.emails} />
+            </div>
+            <Mail size={32} color="var(--primary)" opacity={0.6}/>
+          </div>
         </div>
       </div>
     </div>
   );
 
   const StatsWidget = () => (
-    <div className="dashboard-grid" style={{ marginBottom: '24px' }}>
-      <div className="glass-panel stat-card">
-        <p className="stat-title">新規顧客</p>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <p className="stat-value">{isLoading ? '-' : dashboardData?.newCustomers || 0}</p>
-          <Users size={32} color="var(--primary)" opacity={0.6}/>
-        </div>
+    <div style={{ marginBottom: '24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+         <h2 style={{ fontSize: '18px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
+           <Target size={20} color="var(--success)" /> 会社全体のKPIサマリー
+         </h2>
+         <Link href="/kpi-details" className="btn btn-primary" style={{ padding: '6px 16px', fontSize: '12px' }}>
+           詳細分析ページへ <ArrowRight size={14} />
+         </Link>
       </div>
-      <div className="glass-panel stat-card">
-        <p className="stat-title">契約獲得数</p>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <p className="stat-value">{isLoading ? '-' : dashboardData?.wonDeals || 0}</p>
-          <Target size={32} color="var(--success)" opacity={0.6}/>
+      <div className="dashboard-grid">
+        <div className="glass-panel stat-card">
+          <p className="stat-title">新規顧客</p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline' }}>
+              <p className="stat-value">{isLoading ? '-' : dashboardData?.newCustomers || 0}</p>
+              <DeltaIndicator current={dashboardData?.newCustomers || 0} previous={dashboardData?.compareStats?.newCustomers} />
+            </div>
+            <Users size={32} color="var(--primary)" opacity={0.6}/>
+          </div>
         </div>
-      </div>
-      <div className="glass-panel stat-card">
-        <p className="stat-title">進行中の商談</p>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <p className="stat-value">{isLoading ? '-' : dashboardData?.activeDeals || 0}</p>
-          <Presentation size={32} color="var(--warning)" opacity={0.6}/>
+        <div className="glass-panel stat-card">
+          <p className="stat-title">契約獲得数</p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline' }}>
+              <p className="stat-value">{isLoading ? '-' : dashboardData?.wonDeals || 0}</p>
+              <DeltaIndicator current={dashboardData?.wonDeals || 0} previous={dashboardData?.compareStats?.wonDeals} />
+            </div>
+            <Target size={32} color="var(--success)" opacity={0.6}/>
+          </div>
         </div>
-      </div>
-      <div className="glass-panel stat-card">
-        <p className="stat-title">活動記録</p>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <p className="stat-value">{isLoading ? '-' : dashboardData?.recentInteractionsCount || 0}</p>
-          <MailCheck size={32} color="var(--primary)" opacity={0.6}/>
+        <div className="glass-panel stat-card">
+          <p className="stat-title">進行中の商談</p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline' }}>
+              <p className="stat-value">{isLoading ? '-' : dashboardData?.activeDeals || 0}</p>
+              <DeltaIndicator current={dashboardData?.activeDeals || 0} previous={dashboardData?.compareStats?.activeDeals} />
+            </div>
+            <Presentation size={32} color="var(--warning)" opacity={0.6}/>
+          </div>
+        </div>
+        <div className="glass-panel stat-card">
+          <p className="stat-title">活動記録</p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline' }}>
+              <p className="stat-value">{isLoading ? '-' : dashboardData?.recentInteractionsCount || 0}</p>
+              <DeltaIndicator current={dashboardData?.recentInteractionsCount || 0} previous={dashboardData?.compareStats?.recentInteractionsCount} />
+            </div>
+            <MailCheck size={32} color="var(--primary)" opacity={0.6}/>
+          </div>
         </div>
       </div>
     </div>
@@ -134,7 +201,7 @@ export default function Home() {
 
   const ActivityWidget = () => (
     <div className="glass-panel" style={{ padding: '24px', flex: 1 }}>
-      <h2 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '16px' }}>最近の活動</h2>
+      <h2 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '16px' }}>会社全体の最近の活動</h2>
       <div style={{ overflowX: 'auto' }}>
         <table className="data-table">
           <thead>
@@ -168,48 +235,92 @@ export default function Home() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
         <div>
           <h1 className="page-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
             <LayoutTemplate size={28} color="var(--primary)" /> ダッシュボード
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '4px' }}>営業の進捗情報を一目で確認できます</p>
         </div>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.6)', padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-            <Calendar size={14} color="var(--text-muted)" />
-            <select 
-              value={period} 
-              onChange={e => setPeriod(e.target.value)}
-              style={{ background: 'transparent', border: 'none', fontSize: '13px', outline: 'none', color: 'var(--text-main)', cursor: 'pointer' }}
-            >
-              <option value="this_month">今月</option>
-              <option value="last_month">先月</option>
-              <option value="this_year">今年</option>
-              <option value="all">全期間</option>
-              <option value="custom">カスタム（期間指定）</option>
-            </select>
+        
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            {/* 表示ユーザー切替 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.6)', padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+              <UserCircle size={14} color="var(--primary)" />
+              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>対象:</span>
+              <select 
+                value={targetUser} 
+                onChange={e => setTargetUser(e.target.value)}
+                style={{ background: 'transparent', border: 'none', fontSize: '13px', outline: 'none', color: 'var(--text-main)', cursor: 'pointer', fontWeight: 'bold' }}
+              >
+                <option value="">自分</option>
+                <option value="all">会社全体</option>
+                <optgroup label="他メンバー">
+                  {dashboardData?.teamMembers?.map((m: any) => (
+                    <option key={m.id} value={m.id}>{m.name}</option>
+                  ))}
+                </optgroup>
+              </select>
+            </div>
+
+            {/* 期間切替 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.6)', padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+              <Calendar size={14} color="var(--text-muted)" />
+              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>期間:</span>
+              <select 
+                value={period} 
+                onChange={e => setPeriod(e.target.value)}
+                style={{ background: 'transparent', border: 'none', fontSize: '13px', outline: 'none', color: 'var(--text-main)', cursor: 'pointer', fontWeight: '500' }}
+              >
+                <option value="this_month">今月</option>
+                <option value="last_month">先月</option>
+                <option value="this_year">今年</option>
+                <option value="all">全期間</option>
+                <option value="custom">カスタム（期間指定）</option>
+              </select>
+            </div>
+
+            {/* 比較対象切替 */}
+            {period !== 'all' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.6)', padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                <BarChart size={14} color="var(--secondary)" />
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>比較:</span>
+                <select 
+                  value={compareMode} 
+                  onChange={e => setCompareMode(e.target.value)}
+                  style={{ background: 'transparent', border: 'none', fontSize: '13px', outline: 'none', color: 'var(--text-main)', cursor: 'pointer', fontWeight: '500' }}
+                >
+                  <option value="none">無し</option>
+                  <option value="previous_period">前期間</option>
+                  <option value="previous_year">前年同期</option>
+                </select>
+              </div>
+            )}
           </div>
           
-          {period === 'custom' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.6)', padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-               <input type="date" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)} style={{ border: 'none', background: 'transparent', fontSize: '12px', outline: 'none' }} />
-               <span style={{ color: 'var(--text-muted)' }}>〜</span>
-               <input type="date" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)} style={{ border: 'none', background: 'transparent', fontSize: '12px', outline: 'none' }} />
-            </div>
-          )}
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {period === 'custom' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.6)', padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                 <input type="date" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)} style={{ border: 'none', background: 'transparent', fontSize: '12px', outline: 'none' }} />
+                 <span style={{ color: 'var(--text-muted)' }}>〜</span>
+                 <input type="date" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)} style={{ border: 'none', background: 'transparent', fontSize: '12px', outline: 'none' }} />
+              </div>
+            )}
 
-          <button 
-            className={`btn ${isEditMode ? 'btn-primary' : ''}`} 
-            onClick={() => setIsEditMode(!isEditMode)}
-            style={{ 
-              background: isEditMode ? 'var(--primary)' : 'rgba(255,255,255,0.6)', 
-              color: isEditMode ? 'white' : 'var(--text-main)',
-              border: isEditMode ? 'none' : '1px solid var(--glass-border)'
-            }}
-          >
-            {isEditMode ? '完了' : 'ウィジェットを編集表示'}
-          </button>
+            <button 
+              className={`btn ${isEditMode ? 'btn-primary' : ''}`} 
+              onClick={() => setIsEditMode(!isEditMode)}
+              style={{ 
+                background: isEditMode ? 'var(--primary)' : 'rgba(255,255,255,0.6)', 
+                color: isEditMode ? 'white' : 'var(--text-main)',
+                border: isEditMode ? 'none' : '1px solid var(--glass-border)',
+                fontSize: '12px', padding: '6px 12px'
+              }}
+            >
+              {isEditMode ? '完了' : 'ウィジェットを編集表示'}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -224,11 +335,10 @@ export default function Home() {
               </label>
             ))}
           </div>
-          <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>※将来的にドラッグ＆ドロップでの並び替えに対応します</p>
         </div>
       )}
 
-      {/* ウィジェットのレンダリング部（配置順に展開） */}
+      {/* ウィジェットのレンダリング部 */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
         {widgets.filter(w => w.visible).map(widget => {
           return (
@@ -241,7 +351,7 @@ export default function Home() {
               
               <div style={{ opacity: isEditMode ? 0.8 : 1, transition: 'opacity 0.2s', padding: isEditMode ? '8px' : '0', border: isEditMode ? '2px dashed rgba(0,0,0,0.1)' : 'none', borderRadius: '16px' }}>
                 {widget.type === 'MyStatsWidget' && <MyStatsWidget />}
-                {widget.type === 'MyActivityChartWidget' && <MyActivityChart data={dashboardData?.myActivityChartData} />}
+                {widget.type === 'MyActivityChartWidget' && <MyActivityChart data={dashboardData?.myActivityChartData} title={`${getTargetLabel()}行動履歴 (推移)`} />}
                 {widget.type === 'StatsWidget' && <StatsWidget />}
                 {widget.type === 'ChartsWidget' && <DashboardCharts taskProgress={dashboardData?.taskProgress} chartData={dashboardData?.chartData} dealsByStage={dashboardData?.dealsByStage} />}
                 {widget.type === 'ActivityWidget' && <ActivityWidget />}
@@ -251,7 +361,7 @@ export default function Home() {
         })}
         {widgets.filter(w => w.visible).length === 0 && (
           <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>
-            表示するウィジェットがありません。「ウィジェットを編集」から追加してください。
+            表示するウィジェットがありません。「ウィジェットを編集表示」から追加してください。
           </div>
         )}
       </div>

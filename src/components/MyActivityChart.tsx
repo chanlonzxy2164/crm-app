@@ -11,10 +11,10 @@ import {
   ResponsiveContainer
 } from 'recharts';
 
-export default function MyActivityChart({ data }: { data?: any[] }) {
+export default function MyActivityChart({ data, title = "行動履歴 (推移)" }: { data?: any[], title?: string }) {
   return (
     <div className="glass-panel" style={{ padding: '24px', flex: 1 }}>
-      <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>自身の行動履歴 (推移)</h2>
+      <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>{title}</h2>
       <div style={{ width: '100%', height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {data && data.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
