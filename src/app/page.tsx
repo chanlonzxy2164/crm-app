@@ -24,16 +24,22 @@ export default function Home() {
   
   const [targetUser, setTargetUser] = useState(""); // "" means self
   const [compareMode, setCompareMode] = useState("none");
+  const [compStartDate, setCompStartDate] = useState("");
+  const [compEndDate, setCompEndDate] = useState("");
 
   // 初回ロード時および設定変更時にダッシュボードのデータを取得
   useEffect(() => {
     if (period === 'custom' && (!customStartDate || !customEndDate)) return; 
+    if (compareMode === 'custom' && (!compStartDate || !compEndDate)) return;
     setIsLoading(true);
     let url = `/api/dashboard?period=${period}`;
     if (period === 'custom') {
       url += `&startDate=${customStartDate}&endDate=${customEndDate}`;
     }
     url += `&compareMode=${compareMode}`;
+    if (compareMode === 'custom') {
+      url += `&compStartDate=${compStartDate}&compEndDate=${compEndDate}`;
+    }
     if (targetUser) {
       url += `&targetUser=${targetUser}`;
     }
@@ -48,7 +54,7 @@ export default function Home() {
         console.error(err);
         setIsLoading(false);
       });
-  }, [period, targetUser, compareMode, customStartDate, customEndDate]);
+  }, [period, targetUser, compareMode, customStartDate, customEndDate, compStartDate, compEndDate]);
 
   const toggleWidget = (id: string) => {
     setWidgets(widgets.map(w => w.id === id ? { ...w, visible: !w.visible } : w));
@@ -75,13 +81,23 @@ export default function Home() {
     return member ? `${member.name}さんの` : '自分の';
   };
 
-  // 比較の差分表示用コンポーネント
+  // 比較の差分表示用コンポーネント (パーセント計算追加)
   const DeltaIndicator = ({ current, previous }: { current: number, previous?: number }) => {
     if (previous === undefined || compareMode === 'none') return null;
     const diff = current - previous;
-    if (diff === 0) return <span style={{ fontSize: '13px', color: 'var(--text-muted)', marginLeft: '8px', fontWeight: 'bold' }}>±0</span>;
-    if (diff > 0) return <span style={{ fontSize: '13px', color: 'var(--success)', marginLeft: '8px', fontWeight: 'bold' }}>▲+{diff}</span>;
-    return <span style={{ fontSize: '13px', color: 'var(--danger)', marginLeft: '8px', fontWeight: 'bold' }}>▼{diff}</span>;
+    
+    let percentStr = '';
+    if (previous === 0) {
+      if (current > 0) percentStr = '(+100%)';
+      else percentStr = '(±0%)';
+    } else {
+      const percent = Math.round((diff / previous) * 100);
+      percentStr = percent > 0 ? `(+${percent}%)` : `(${percent}%)`;
+    }
+
+    if (diff === 0) return <span style={{ fontSize: '13px', color: 'var(--text-muted)', marginLeft: '8px', fontWeight: 'bold' }}>±0 {percentStr}</span>;
+    if (diff > 0) return <span style={{ fontSize: '13px', color: 'var(--success)', marginLeft: '8px', fontWeight: 'bold' }}>▲+{diff} <span style={{ fontSize: '11px', opacity: 0.8 }}>{percentStr}</span></span>;
+    return <span style={{ fontSize: '13px', color: 'var(--danger)', marginLeft: '8px', fontWeight: 'bold' }}>▼{diff} <span style={{ fontSize: '11px', opacity: 0.8 }}>{percentStr}</span></span>;
   };
 
   const MyStatsWidget = () => (
@@ -294,6 +310,7 @@ export default function Home() {
                   <option value="none">無し</option>
                   <option value="previous_period">前期間</option>
                   <option value="previous_year">前年同期</option>
+                  <option value="custom">カスタム</option>
                 </select>
               </div>
             )}
@@ -302,9 +319,19 @@ export default function Home() {
           <div style={{ display: 'flex', gap: '8px' }}>
             {period === 'custom' && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.6)', padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                 <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>対象期間:</span>
                  <input type="date" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)} style={{ border: 'none', background: 'transparent', fontSize: '12px', outline: 'none' }} />
                  <span style={{ color: 'var(--text-muted)' }}>〜</span>
                  <input type="date" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)} style={{ border: 'none', background: 'transparent', fontSize: '12px', outline: 'none' }} />
+              </div>
+            )}
+            
+            {compareMode === 'custom' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.6)', padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                 <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>比較期間:</span>
+                 <input type="date" value={compStartDate} onChange={e => setCompStartDate(e.target.value)} style={{ border: 'none', background: 'transparent', fontSize: '12px', outline: 'none' }} />
+                 <span style={{ color: 'var(--text-muted)' }}>〜</span>
+                 <input type="date" value={compEndDate} onChange={e => setCompEndDate(e.target.value)} style={{ border: 'none', background: 'transparent', fontSize: '12px', outline: 'none' }} />
               </div>
             )}
 
@@ -351,7 +378,7 @@ export default function Home() {
               
               <div style={{ opacity: isEditMode ? 0.8 : 1, transition: 'opacity 0.2s', padding: isEditMode ? '8px' : '0', border: isEditMode ? '2px dashed rgba(0,0,0,0.1)' : 'none', borderRadius: '16px' }}>
                 {widget.type === 'MyStatsWidget' && <MyStatsWidget />}
-                {widget.type === 'MyActivityChartWidget' && <MyActivityChart data={dashboardData?.myActivityChartData} title={`${getTargetLabel()}行動履歴 (推移)`} />}
+                {widget.type === 'MyActivityChartWidget' && <MyActivityChart data={dashboardData?.myActivityChartData} compareStats={dashboardData?.compareStats} myStats={dashboardData?.myStats} title={`${getTargetLabel()}行動履歴 (推移)`} />}
                 {widget.type === 'StatsWidget' && <StatsWidget />}
                 {widget.type === 'ChartsWidget' && <DashboardCharts taskProgress={dashboardData?.taskProgress} chartData={dashboardData?.chartData} dealsByStage={dashboardData?.dealsByStage} />}
                 {widget.type === 'ActivityWidget' && <ActivityWidget />}
