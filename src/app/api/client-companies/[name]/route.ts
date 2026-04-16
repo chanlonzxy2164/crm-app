@@ -60,16 +60,28 @@ export async function PATCH(request: Request, context: { params: Promise<{name: 
 
     const params = await context.params;
     const companyName = decodeURIComponent(params.name);
-    const { userId } = await request.json();
+    const { userId, newCompanyName } = await request.json();
 
-    await prisma.customer.updateMany({
-      // @ts-ignore
-      where: { companyId: session.user.companyId, companyName },
-      data: { userId }
-    });
+    if (newCompanyName) {
+      await prisma.customer.updateMany({
+        // @ts-ignore
+        where: { companyId: session.user.companyId, companyName },
+        data: { companyName: newCompanyName }
+      });
+      return NextResponse.json({ success: true, newCompanyName });
+    }
 
-    return NextResponse.json({ success: true });
+    if (userId !== undefined) {
+      await prisma.customer.updateMany({
+        // @ts-ignore
+        where: { companyId: session.user.companyId, companyName },
+        data: { userId }
+      });
+      return NextResponse.json({ success: true });
+    }
+
+    return NextResponse.json({ success: false, error: 'No valid update data provided' }, { status: 400 });
   } catch (error) {
-    return NextResponse.json({ error: 'Failed to assign user' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to update company' }, { status: 500 });
   }
 }

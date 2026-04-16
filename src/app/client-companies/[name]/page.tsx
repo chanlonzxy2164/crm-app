@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Target, Users, Presentation, ArrowLeft, MailCheck, Building2, UserCircle, UserPlus } from 'lucide-react';
+import { Target, Users, Presentation, ArrowLeft, MailCheck, Building2, UserCircle, UserPlus, X, Edit2 } from 'lucide-react';
 import Link from 'next/link';
 
 interface Deal {
@@ -42,6 +42,9 @@ export default function ClientCompanyPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [tenantUsers, setTenantUsers] = useState<any[]>([]);
   const [assigningUserId, setAssigningUserId] = useState<string>('');
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editCompanyName, setEditCompanyName] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     fetchCompanyData();
@@ -64,6 +67,38 @@ export default function ClientCompanyPage() {
       setAssigningUserId('');
       fetchCompanyData();
     } catch (err) { console.error(err); }
+  };
+
+  const handleEditClick = () => {
+    if (data) {
+      setEditCompanyName(data.companyName);
+      setIsEditModalOpen(true);
+    }
+  };
+
+  const handleSaveCompany = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editCompanyName.trim()) return;
+    setIsSaving(true);
+    try {
+      const decodedName = decodeURIComponent(name);
+      const res = await fetch(`/api/client-companies/${encodeURIComponent(decodedName)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newCompanyName: editCompanyName })
+      });
+      if (res.ok) {
+        setIsEditModalOpen(false);
+        router.push(`/client-companies/${encodeURIComponent(editCompanyName)}`);
+      } else {
+        alert('保存に失敗しました');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('エラーが発生しました');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const fetchCompanyData = async () => {
@@ -122,6 +157,14 @@ export default function ClientCompanyPage() {
             <h1 className="page-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '16px', fontSize: '32px' }}>
               <Building2 size={32} color="var(--primary)" />
               {data.companyName}
+              <button 
+                onClick={handleEditClick}
+                className="btn"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', padding: '6px 16px', background: 'white', border: '1px solid rgba(0,0,0,0.1)', color: 'var(--text-main)', cursor: 'pointer', borderRadius: '8px', fontWeight: '600', marginLeft: '4px' }}
+                title="企業名を編集"
+              >
+                <Edit2 size={16} /> 編集
+              </button>
             </h1>
             <p style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '16px', color: 'var(--text-muted)', marginTop: '8px' }}>
               顧客企業詳細ページ
@@ -229,6 +272,30 @@ export default function ClientCompanyPage() {
           </div>
         </div>
       </div>
+
+      {isEditModalOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' }}>
+          <div className="glass-panel" style={{ width: '100%', maxWidth: '500px', padding: '32px', position: 'relative', margin: '20px' }}>
+            <button onClick={() => setIsEditModalOpen(false)} style={{ position: 'absolute', top: '16px', right: '16px', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
+              <X size={20} />
+            </button>
+            <h2 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '24px' }}>企業名の編集</h2>
+            <form onSubmit={handleSaveCompany}>
+              <div className="form-group" style={{ marginBottom: '24px' }}>
+                <label className="form-label" style={{ fontSize: '13px', fontWeight: '600', marginBottom: '8px', display: 'block' }}>企業名 <span style={{ color: 'var(--danger)' }}>*</span></label>
+                <input type="text" className="input-field" value={editCompanyName} onChange={e => setEditCompanyName(e.target.value)} required style={{ padding: '10px', width: '100%', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.1)' }} placeholder="株式会社〇〇" />
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>※この変更は、関連するすべての顧客の「顧客企業名」にも反映されます。</p>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                <button type="button" className="btn" onClick={() => setIsEditModalOpen(false)} style={{ background: 'white', border: '1px solid rgba(0,0,0,0.1)', padding: '10px 16px', borderRadius: '8px', fontWeight: '600' }}>キャンセル</button>
+                <button type="submit" className="btn btn-primary" disabled={isSaving} style={{ padding: '10px 16px', borderRadius: '8px', fontWeight: '600' }}>
+                  {isSaving ? '保存中...' : '保存する'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

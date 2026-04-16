@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Mail, Phone, Calendar, Briefcase, Plus, ArrowLeft, X, MessageSquare, Building2, UserCircle } from 'lucide-react';
+import { Mail, Phone, Calendar, Briefcase, Plus, ArrowLeft, X, MessageSquare, Building2, UserCircle, Edit2 } from 'lucide-react';
 import Link from 'next/link';
 
 interface Deal {
@@ -41,6 +41,9 @@ export default function CustomerDetailPage() {
   const [isInteractionFormOpen, setIsInteractionFormOpen] = useState(false);
   const [interactionData, setInteractionData] = useState({ type: 'EMAIL', notes: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editData, setEditData] = useState({ firstName: '', lastName: '', companyName: '' });
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     fetchCustomer();
@@ -64,6 +67,40 @@ export default function CustomerDetailPage() {
       console.error(err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleEditClick = () => {
+    if (customer) {
+      setEditData({
+        firstName: customer.firstName || '',
+        lastName: customer.lastName || '',
+        companyName: customer.companyName || ''
+      });
+      setIsEditModalOpen(true);
+    }
+  };
+
+  const handleSaveCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+      const res = await fetch(`/api/customers/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editData)
+      });
+      if (res.ok) {
+        setIsEditModalOpen(false);
+        fetchCustomer();
+      } else {
+        alert('保存に失敗しました');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('エラーが発生しました');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -105,6 +142,14 @@ export default function CustomerDetailPage() {
           <div>
             <h1 className="page-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '16px', fontSize: '32px' }}>
               {customer.lastName} {customer.firstName}
+              <button 
+                onClick={handleEditClick}
+                className="btn"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', padding: '6px 16px', background: 'white', border: '1px solid rgba(0,0,0,0.1)', color: 'var(--text-main)', cursor: 'pointer', borderRadius: '8px', fontWeight: '600', marginLeft: '8px' }}
+                title="顧客情報を編集"
+              >
+                <Edit2 size={16} /> 編集
+              </button>
               <span className={`badge ${customer.status === 'ACTIVE' ? 'badge-active' : 'badge-lead'}`}>{customer.status === 'ACTIVE' ? '顧客' : '見込み'}</span>
             </h1>
             {customer.companyName && (
@@ -248,6 +293,39 @@ export default function CustomerDetailPage() {
           </div>
         </div>
       </div>
+
+      {isEditModalOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' }}>
+          <div className="glass-panel" style={{ width: '100%', maxWidth: '500px', padding: '32px', position: 'relative', margin: '20px' }}>
+            <button onClick={() => setIsEditModalOpen(false)} style={{ position: 'absolute', top: '16px', right: '16px', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
+              <X size={20} />
+            </button>
+            <h2 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '24px' }}>顧客情報の編集</h2>
+            <form onSubmit={handleSaveCustomer}>
+              <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label className="form-label" style={{ fontSize: '13px', fontWeight: '600', marginBottom: '8px', display: 'block' }}>姓 <span style={{ color: 'var(--danger)' }}>*</span></label>
+                  <input type="text" className="input-field" value={editData.lastName} onChange={e => setEditData({...editData, lastName: e.target.value})} required style={{ padding: '10px', width: '100%', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.1)' }} />
+                </div>
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label className="form-label" style={{ fontSize: '13px', fontWeight: '600', marginBottom: '8px', display: 'block' }}>名 <span style={{ color: 'var(--danger)' }}>*</span></label>
+                  <input type="text" className="input-field" value={editData.firstName} onChange={e => setEditData({...editData, firstName: e.target.value})} required style={{ padding: '10px', width: '100%', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.1)' }} />
+                </div>
+              </div>
+              <div className="form-group" style={{ marginBottom: '24px' }}>
+                <label className="form-label" style={{ fontSize: '13px', fontWeight: '600', marginBottom: '8px', display: 'block' }}>顧客企業名</label>
+                <input type="text" className="input-field" value={editData.companyName} onChange={e => setEditData({...editData, companyName: e.target.value})} style={{ padding: '10px', width: '100%', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.1)' }} placeholder="株式会社〇〇" />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                <button type="button" className="btn" onClick={() => setIsEditModalOpen(false)} style={{ background: 'white', border: '1px solid rgba(0,0,0,0.1)', padding: '10px 16px', borderRadius: '8px', fontWeight: '600' }}>キャンセル</button>
+                <button type="submit" className="btn btn-primary" disabled={isSaving} style={{ padding: '10px 16px', borderRadius: '8px', fontWeight: '600' }}>
+                  {isSaving ? '保存中...' : '保存する'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
