@@ -23,7 +23,7 @@ export async function POST(request: Request) {
         notes: data.notes,
         customerId: data.customerId,
         companyId: session.user.companyId,
-        userId: session.user.id,
+        userId: data.userId || session.user.id,
       }
     });
 

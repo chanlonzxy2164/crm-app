@@ -33,11 +33,13 @@ model User {
   companyId String?
   company   Company? @relation(fields: [companyId], references: [id])
 
-  tasks     Task[]
-  deals     Deal[]
-  messages  ChatMessage[]
-  customers Customer[]
-  interactions Interaction[]
+  tasks         Task[]
+  deals         Deal[]
+  messages      ChatMessage[]
+  customers     Customer[]
+  interactions  Interaction[]
+  gmailToken    GmailToken?
+  emailMessages EmailMessage[]
 }
 
 model Customer {
@@ -54,6 +56,7 @@ model Customer {
 
   interactions   Interaction[]
   deals          Deal[]
+  emailMessages  EmailMessage[]
 
   companyId      String?
   company        Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -121,4 +124,38 @@ model ChatMessage {
 
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model GmailToken {
+  id           String   @id @default(uuid())
+  accessToken  String
+  refreshToken String
+  expiresAt    DateTime
+  gmailEmail   String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model EmailMessage {
+  id          String   @id @default(uuid())
+  gmailId     String   @unique
+  threadId    String?
+  subject     String?
+  from        String
+  to          String
+  snippet     String?
+  body        String?
+  date        DateTime
+  isRead      Boolean  @default(false)
+  labelIds    String?
+  createdAt   DateTime @default(now())
+
+  customerId  String?
+  customer    Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

@@ -12,11 +12,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div style={{ display: 'flex' }}>
+    <div style={{ display: 'flex', minWidth: 0 }}>
       <Sidebar />
-      <main className="main-content" style={{ flex: 1 }}>
+      <main className="main-content" style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
         <Header />
-        <div className="page-content">{children}</div>
+        <div className="page-content" style={{ minWidth: 0 }}>{children}</div>
       </main>
     </div>
   );

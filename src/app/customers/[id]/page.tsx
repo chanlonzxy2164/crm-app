@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Mail, Phone, Calendar, Briefcase, Plus, ArrowLeft, X, MessageSquare, Building2, UserCircle, Edit2 } from 'lucide-react';
 import Link from 'next/link';
+import CustomerEmailSection from '@/components/CustomerEmailSection';
 
 interface Deal {
   id: string;
@@ -39,14 +40,19 @@ export default function CustomerDetailPage() {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isInteractionFormOpen, setIsInteractionFormOpen] = useState(false);
-  const [interactionData, setInteractionData] = useState({ type: 'EMAIL', notes: '' });
+  const [interactionData, setInteractionData] = useState({ id: '', type: 'EMAIL', notes: '', userId: '' });
+  const [tenantUsers, setTenantUsers] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editData, setEditData] = useState({ firstName: '', lastName: '', companyName: '' });
+  const [editData, setEditData] = useState({ firstName: '', lastName: '', companyName: '', email: '', phoneNumber: '', status: 'ACTIVE' });
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     fetchCustomer();
+    fetch('/api/settings/users')
+      .then(r => r.json())
+      .then(d => { if (Array.isArray(d)) setTenantUsers(d); })
+      .catch(() => {});
   }, [id]);
 
   const fetchCustomer = async () => {
@@ -75,7 +81,10 @@ export default function CustomerDetailPage() {
       setEditData({
         firstName: customer.firstName || '',
         lastName: customer.lastName || '',
-        companyName: customer.companyName || ''
+        companyName: customer.companyName || '',
+        email: customer.email || '',
+        phoneNumber: customer.phoneNumber || '',
+        status: customer.status || 'ACTIVE'
       });
       setIsEditModalOpen(true);
     }
@@ -108,13 +117,15 @@ export default function CustomerDetailPage() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const res = await fetch('/api/interactions', {
-        method: 'POST',
+      const url = interactionData.id ? `/api/interactions/${interactionData.id}` : '/api/interactions';
+      const method = interactionData.id ? 'PATCH' : 'POST';
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...interactionData, customerId: id })
       });
       if (res.ok) {
-        setInteractionData({ type: 'EMAIL', notes: '' });
+        setInteractionData({ id: '', type: 'EMAIL', notes: '', userId: '' });
         setIsInteractionFormOpen(false);
         fetchCustomer();
       }
@@ -123,6 +134,16 @@ export default function CustomerDetailPage() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleEditInteraction = (interaction: any) => {
+    setInteractionData({
+      id: interaction.id,
+      type: interaction.type,
+      notes: interaction.notes || '',
+      userId: interaction.userId || ''
+    });
+    setIsInteractionFormOpen(true);
   };
 
   if (isLoading) return <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>読み込み中...</div>;
@@ -138,9 +159,9 @@ export default function CustomerDetailPage() {
         <button onClick={() => router.push('/customers')} style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', textDecoration: 'none', marginBottom: '16px', fontSize: '14px', fontWeight: '500' }}>
           <ArrowLeft size={16} /> 顧客一覧へ戻る
         </button>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div>
-            <h1 className="page-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '16px', fontSize: '32px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <h1 className="page-title" style={{ margin: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '16px', fontSize: '32px', wordBreak: 'break-all' }}>
               {customer.lastName} {customer.firstName}
               <button 
                 onClick={handleEditClick}
@@ -163,18 +184,18 @@ export default function CustomerDetailPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) minmax(350px, 1.5fr)', gap: '32px', alignItems: 'start' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '32px', alignItems: 'start', marginBottom: '32px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', flex: '1 1 300px', minWidth: 0 }}>
           <div className="glass-panel" style={{ padding: '32px' }}>
             <h2 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '24px', borderBottom: '1px solid rgba(0,0,0,0.05)', paddingBottom: '12px' }}>連絡先情報</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div>
                 <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: '600', marginBottom: '6px', display: 'block' }}>メールアドレス</span>
-                <p style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px', fontWeight: '500' }}><Mail size={18} color="var(--primary)"/> {customer.email || '未設定'}</p>
+                <p style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px', fontWeight: '500', wordBreak: 'break-all' }}><Mail size={18} color="var(--primary)" style={{ flexShrink: 0 }}/> {customer.email || '未設定'}</p>
               </div>
               <div>
                 <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: '600', marginBottom: '6px', display: 'block' }}>電話番号</span>
-                <p style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px', fontWeight: '500' }}><Phone size={18} color="var(--success)"/> {customer.phoneNumber || '未設定'}</p>
+                <p style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px', fontWeight: '500', wordBreak: 'break-all' }}><Phone size={18} color="var(--success)" style={{ flexShrink: 0 }}/> {customer.phoneNumber || '未設定'}</p>
               </div>
               <div>
                 <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: '600', marginBottom: '6px', display: 'block' }}>最終連絡日</span>
@@ -193,8 +214,8 @@ export default function CustomerDetailPage() {
             </div>
           </div>
 
-          <div className="glass-panel" style={{ padding: '32px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '1px solid rgba(0,0,0,0.05)', paddingBottom: '12px' }}>
+          <div className="glass-panel" style={{ padding: '32px', minWidth: 0 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '1px solid rgba(0,0,0,0.05)', paddingBottom: '12px' }}>
               <h2 style={{ fontSize: '18px', fontWeight: '700' }}>関連する商談</h2>
               <Link href="/deals" className="btn" style={{ padding: '6px 12px', fontSize: '12px', background: 'var(--primary)', color: 'white' }}>
                 一覧へ
@@ -205,9 +226,9 @@ export default function CustomerDetailPage() {
               {customer.deals.length === 0 ? <p style={{ color: 'var(--text-muted)', fontSize: '14px', textAlign: 'center', padding: '16px 0' }}>商談はありません</p> : 
                 customer.deals.map(deal => (
                   <div key={deal.id} className="glass-panel" style={{ padding: '20px', background: 'rgba(255,255,255,0.8)', borderLeft: `6px solid ${deal.stage === 'WON' ? 'var(--success)' : deal.stage === 'LOST' ? 'var(--danger)' : 'var(--primary)'}` }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', alignItems: 'flex-start' }}>
-                      <h3 style={{ fontSize: '16px', fontWeight: '700', lineHeight: '1.4' }}>{deal.name}</h3>
-                      <span style={{ fontSize: '16px', fontWeight: '700', color: 'var(--primary)', whiteSpace: 'nowrap', marginLeft: '12px' }}>&yen;{deal.amount.toLocaleString()}</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', alignItems: 'flex-start', gap: '12px' }}>
+                      <h3 style={{ fontSize: '16px', fontWeight: '700', lineHeight: '1.4', wordBreak: 'break-all' }}>{deal.name}</h3>
+                      <span style={{ fontSize: '16px', fontWeight: '700', color: 'var(--primary)', whiteSpace: 'nowrap', flexShrink: 0 }}>&yen;{deal.amount.toLocaleString()}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span className="badge" style={{ background: 'white', border: '1px solid rgba(0,0,0,0.1)', color: 'var(--text-main)' }}>{STAGE_LABELS[deal.stage]}</span>
@@ -220,11 +241,14 @@ export default function CustomerDetailPage() {
           </div>
         </div>
 
-        <div className="glass-panel" style={{ padding: '32px', minHeight: '600px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '1px solid rgba(0,0,0,0.05)', paddingBottom: '12px' }}>
+        <div className="glass-panel" style={{ padding: '32px', minHeight: '600px', flex: '1.5 1 350px', minWidth: 0 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '1px solid rgba(0,0,0,0.05)', paddingBottom: '12px' }}>
             <h2 style={{ fontSize: '18px', fontWeight: '700' }}>対応・活動履歴</h2>
             {!isInteractionFormOpen && (
-              <button className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '13px' }} onClick={() => setIsInteractionFormOpen(true)}>
+              <button className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '13px' }} onClick={() => {
+                setInteractionData({ id: '', type: 'EMAIL', notes: '', userId: '' });
+                setIsInteractionFormOpen(true);
+              }}>
                 <Plus size={16} /> 活動を記録
               </button>
             )}
@@ -235,8 +259,21 @@ export default function CustomerDetailPage() {
               <button onClick={() => setIsInteractionFormOpen(false)} style={{ position: 'absolute', top: '16px', right: '16px', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
                 <X size={20} />
               </button>
-              <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '20px' }}>新しい履歴を追加</h3>
+              <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '20px' }}>{interactionData.id ? '活動記録を編集' : '新しい履歴を追加'}</h3>
               <form onSubmit={handleAddInteraction}>
+                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                  <div className="form-group" style={{ flex: 1, minWidth: '200px' }}>
+                    <label className="form-label">担当者 (自社)</label>
+                    <select className="input-field" value={interactionData.userId} onChange={e => setInteractionData({...interactionData, userId: e.target.value})}>
+                      <option value="">自分 (ログインユーザー)</option>
+                      {tenantUsers.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group" style={{ flex: 1, minWidth: '200px' }}>
+                    <label className="form-label">顧客 (相手先)</label>
+                    <input className="input-field" value={`${customer.lastName} ${customer.firstName}`} disabled style={{ background: 'rgba(0,0,0,0.02)' }} />
+                  </div>
+                </div>
                 <div className="form-group">
                   <label className="form-label">活動の種類</label>
                   <div style={{ position: 'relative' }}>
@@ -260,36 +297,14 @@ export default function CustomerDetailPage() {
             </div>
           )}
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-            {customer.interactions.length === 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
-                <MessageSquare size={40} style={{ marginBottom: '16px', opacity: 0.5 }} />
-                <p style={{ fontSize: '15px', fontWeight: '500' }}>まだ活動履歴がありません</p>
-                <p style={{ fontSize: '13px', marginTop: '4px' }}>「活動を記録」から顧客とのやりとりを残しましょう。</p>
-              </div>
-            ) : (
-              <div style={{ position: 'relative' }}>
-                <div style={{ position: 'absolute', left: '20px', top: '24px', bottom: '24px', width: '2px', background: 'rgba(0,0,0,0.08)' }}></div>
-                {customer.interactions.map((interaction, index) => (
-                  <div key={interaction.id} style={{ display: 'flex', gap: '20px', position: 'relative', padding: '24px 0' }}>
-                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(0,0,0,0.1)', zIndex: 1, color: 'var(--text-main)', flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-                      {interaction.type === 'EMAIL' ? <Mail size={18} color="var(--primary)"/> : interaction.type === 'CALL' ? <Phone size={18} color="var(--success)"/> : <Briefcase size={18} color="var(--warning)"/>}
-                    </div>
-                    <div className="glass-panel" style={{ flex: 1, padding: '20px', background: 'rgba(255,255,255,0.7)', border: 'none', boxShadow: '0 2px 12px rgba(0,0,0,0.03)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                        <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-main)' }}>
-                          {interaction.type === 'EMAIL' ? 'メール' : interaction.type === 'CALL' ? '電話' : '商談'}
-                        </span>
-                        <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: '500' }}>
-                          {new Date(interaction.date).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                      <p style={{ fontSize: '14px', lineHeight: '1.6', color: 'var(--text-main)', whiteSpace: 'pre-wrap' }}>{interaction.notes}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+          <div style={{ marginTop: '24px' }}>
+            <CustomerEmailSection
+              customerId={id}
+              customerEmail={customer.email}
+              customerName={`${customer.lastName} ${customer.firstName}`}
+              interactions={customer.interactions}
+              onEditInteraction={handleEditInteraction}
+            />
           </div>
         </div>
       </div>
@@ -312,9 +327,24 @@ export default function CustomerDetailPage() {
                   <input type="text" className="input-field" value={editData.firstName} onChange={e => setEditData({...editData, firstName: e.target.value})} required style={{ padding: '10px', width: '100%', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.1)' }} />
                 </div>
               </div>
-              <div className="form-group" style={{ marginBottom: '24px' }}>
+              <div className="form-group" style={{ marginBottom: '16px' }}>
                 <label className="form-label" style={{ fontSize: '13px', fontWeight: '600', marginBottom: '8px', display: 'block' }}>顧客企業名</label>
                 <input type="text" className="input-field" value={editData.companyName} onChange={e => setEditData({...editData, companyName: e.target.value})} style={{ padding: '10px', width: '100%', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.1)' }} placeholder="株式会社〇〇" />
+              </div>
+              <div className="form-group" style={{ marginBottom: '16px' }}>
+                <label className="form-label" style={{ fontSize: '13px', fontWeight: '600', marginBottom: '8px', display: 'block' }}>メールアドレス</label>
+                <input type="email" className="input-field" value={editData.email} onChange={e => setEditData({...editData, email: e.target.value})} style={{ padding: '10px', width: '100%', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.1)' }} placeholder="example@company.com" />
+              </div>
+              <div className="form-group" style={{ marginBottom: '16px' }}>
+                <label className="form-label" style={{ fontSize: '13px', fontWeight: '600', marginBottom: '8px', display: 'block' }}>電話番号</label>
+                <input type="tel" className="input-field" value={editData.phoneNumber} onChange={e => setEditData({...editData, phoneNumber: e.target.value})} style={{ padding: '10px', width: '100%', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.1)' }} placeholder="090-0000-0000" />
+              </div>
+              <div className="form-group" style={{ marginBottom: '24px' }}>
+                <label className="form-label" style={{ fontSize: '13px', fontWeight: '600', marginBottom: '8px', display: 'block' }}>ステータス</label>
+                <select className="input-field" value={editData.status} onChange={e => setEditData({...editData, status: e.target.value})} style={{ padding: '10px', width: '100%', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.1)' }}>
+                  <option value="ACTIVE">顧客（ACTIVE）</option>
+                  <option value="LEAD">見込み（LEAD）</option>
+                </select>
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
                 <button type="button" className="btn" onClick={() => setIsEditModalOpen(false)} style={{ background: 'white', border: '1px solid rgba(0,0,0,0.1)', padding: '10px 16px', borderRadius: '8px', fontWeight: '600' }}>キャンセル</button>

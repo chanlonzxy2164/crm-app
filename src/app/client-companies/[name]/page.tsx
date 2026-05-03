@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Target, Users, Presentation, ArrowLeft, MailCheck, Building2, UserCircle, UserPlus, X, Edit2 } from 'lucide-react';
+import { Target, Users, Presentation, ArrowLeft, MailCheck, Building2, UserCircle, UserPlus, X, Edit2, Mail, Phone, Briefcase, ArrowUpRight, ArrowDownLeft, ChevronDown, ChevronUp, MessageSquare, Plus } from 'lucide-react';
 import Link from 'next/link';
 
 interface Deal {
@@ -27,6 +27,7 @@ interface Customer {
   phoneNumber: string | null;
   deals: Deal[];
   interactions: Interaction[];
+  emailMessages?: any[];
   user?: { id: string; name: string } | null;
 }
 
@@ -45,6 +46,10 @@ export default function ClientCompanyPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editCompanyName, setEditCompanyName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [isInteractionFormOpen, setIsInteractionFormOpen] = useState(false);
+  const [interactionData, setInteractionData] = useState({ id: '', type: 'MEETING', notes: '', customerId: '', userId: '' });
+  const [isSubmittingInteraction, setIsSubmittingInteraction] = useState(false);
 
   useEffect(() => {
     fetchCompanyData();
@@ -123,6 +128,44 @@ export default function ClientCompanyPage() {
     }
   };
 
+  const handleAddInteraction = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!interactionData.customerId) {
+      alert("顧客（相手先）を選択してください");
+      return;
+    }
+    setIsSubmittingInteraction(true);
+    try {
+      const url = interactionData.id ? `/api/interactions/${interactionData.id}` : '/api/interactions';
+      const method = interactionData.id ? 'PATCH' : 'POST';
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(interactionData)
+      });
+      if (res.ok) {
+        setInteractionData({ id: '', type: 'MEETING', notes: '', customerId: '', userId: '' });
+        setIsInteractionFormOpen(false);
+        fetchCompanyData();
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmittingInteraction(false);
+    }
+  };
+
+  const handleEditInteraction = (interaction: any) => {
+    setInteractionData({
+      id: interaction.id,
+      type: interaction.type,
+      notes: interaction.notes || '',
+      customerId: interaction.customerId || '',
+      userId: interaction.userId || ''
+    });
+    setIsInteractionFormOpen(true);
+  };
+
   if (isLoading) return <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>読み込み中...</div>;
   if (!data) return <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>企業が見つかりません</div>;
 
@@ -133,18 +176,29 @@ export default function ClientCompanyPage() {
   // 会社全体の数値を集計
   const totalCustomers = data.customers.length;
   let allDeals: Deal[] = [];
-  let allInteractions: Interaction[] = [];
+  let allHistory: any[] = [];
   
   data.customers.forEach(c => {
     allDeals = [...allDeals, ...c.deals];
-    allInteractions = [...allInteractions, ...c.interactions];
+    (c.interactions || []).forEach(i => {
+      allHistory.push({ ...i, isEmailRecord: false, sortDate: new Date(i.date).getTime(), customerName: `${c.lastName} ${c.firstName}` });
+    });
+    (c.emailMessages || []).forEach(e => {
+      allHistory.push({ ...e, isEmailRecord: true, sortDate: new Date(e.date).getTime(), customerName: `${c.lastName} ${c.firstName}` });
+    });
   });
   
   const totalDealAmount = allDeals.reduce((sum, d) => sum + d.amount, 0);
   const wonDeals = allDeals.filter(d => d.stage === 'WON');
   
-  // Interactionsを日付順にソート（複数顧客の活動記録を統合）
-  allInteractions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  // 統合履歴を日付順にソート
+  allHistory.sort((a, b) => b.sortDate - a.sortDate);
+
+  const extractName = (emailStr: string) => {
+    if (!emailStr) return '';
+    const match = emailStr.match(/^(.+?)\s*<.+>$/);
+    return match ? match[1].replace(/"/g, '') : emailStr.split('@')[0];
+  };
 
   return (
     <div style={{ paddingBottom: '40px' }}>
@@ -220,7 +274,7 @@ export default function ClientCompanyPage() {
         <div className="glass-panel stat-card">
           <p className="stat-title">累計活動記録</p>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <p className="stat-value">{allInteractions.length}件</p>
+            <p className="stat-value">{allHistory.length}件</p>
             <MailCheck size={32} color="var(--primary)" opacity={0.6}/>
           </div>
         </div>
@@ -270,6 +324,156 @@ export default function ClientCompanyPage() {
               ))
             }
           </div>
+        </div>
+      </div>
+
+      <div className="glass-panel" style={{ padding: '32px', marginTop: '32px', minWidth: 0 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '1px solid rgba(0,0,0,0.05)', paddingBottom: '12px' }}>
+          <h2 style={{ fontSize: '18px', fontWeight: '700' }}>企業全体の対応・活動履歴</h2>
+          {!isInteractionFormOpen && (
+            <button className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '13px' }} onClick={() => {
+              setInteractionData({ id: '', type: 'MEETING', notes: '', customerId: '', userId: '' });
+              setIsInteractionFormOpen(true);
+            }}>
+              <Plus size={16} /> 活動を記録
+            </button>
+          )}
+        </div>
+        
+        {isInteractionFormOpen && (
+          <div style={{ background: 'rgba(255,255,255,0.5)', padding: '24px', borderRadius: '12px', marginBottom: '32px', border: '1px solid rgba(0,0,0,0.05)', position: 'relative' }}>
+            <button onClick={() => setIsInteractionFormOpen(false)} style={{ position: 'absolute', top: '16px', right: '16px', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
+              <X size={20} />
+            </button>
+            <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '20px' }}>{interactionData.id ? '活動記録を編集' : '新しい履歴を追加'}</h3>
+            <form onSubmit={handleAddInteraction}>
+              <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                <div className="form-group" style={{ flex: 1, minWidth: '200px' }}>
+                  <label className="form-label">担当者 (自社)</label>
+                  <select className="input-field" value={interactionData.userId} onChange={e => setInteractionData({...interactionData, userId: e.target.value})}>
+                    <option value="">自分 (ログインユーザー)</option>
+                    {tenantUsers.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                  </select>
+                </div>
+                <div className="form-group" style={{ flex: 1, minWidth: '200px' }}>
+                  <label className="form-label">顧客 (相手先) <span style={{ color: 'var(--danger)' }}>*</span></label>
+                  <select className="input-field" value={interactionData.customerId} onChange={e => setInteractionData({...interactionData, customerId: e.target.value})} required>
+                    <option value="">選択してください</option>
+                    {data.customers.map(c => <option key={c.id} value={c.id}>{c.lastName} {c.firstName}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">活動の種類</label>
+                <div style={{ position: 'relative' }}>
+                  <select className="input-field" value={interactionData.type} onChange={e => setInteractionData({...interactionData, type: e.target.value})} style={{ appearance: 'none' }}>
+                    <option value="EMAIL">📧 メール送信・受信</option>
+                    <option value="CALL">📞 電話でのやり取り</option>
+                    <option value="MEETING">💼 商談・打ち合わせ</option>
+                  </select>
+                </div>
+              </div>
+              <div className="form-group" style={{ marginBottom: '24px' }}>
+                <label className="form-label">メモ・内容</label>
+                <textarea className="input-field" placeholder="（例）製品の料金体系について質問があり、見積もりを送付した。" rows={4} value={interactionData.notes} onChange={e => setInteractionData({...interactionData, notes: e.target.value})} required style={{ resize: 'vertical' }} />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button type="submit" className="btn btn-primary" disabled={isSubmittingInteraction}>
+                  {isSubmittingInteraction ? '保存中...' : '記録を保存'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+          {allHistory.length === 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
+              <MessageSquare size={40} style={{ marginBottom: '16px', opacity: 0.5 }} />
+              <p style={{ fontSize: '15px', fontWeight: '500' }}>まだ活動履歴がありません</p>
+            </div>
+          ) : (
+            <div style={{ position: 'relative' }}>
+              <div style={{ position: 'absolute', left: '20px', top: '24px', bottom: '24px', width: '2px', background: 'rgba(0,0,0,0.08)' }}></div>
+              {allHistory.map((item: any, index) => {
+                if (!item.isEmailRecord) {
+                  return (
+                    <div key={`interaction-${item.id}`} style={{ display: 'flex', gap: '20px', position: 'relative', padding: '24px 0', minWidth: 0 }}>
+                      <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(0,0,0,0.1)', zIndex: 1, color: 'var(--text-main)', flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+                        {item.type === 'EMAIL' ? <Mail size={18} color="var(--primary)"/> : item.type === 'CALL' ? <Phone size={18} color="var(--success)"/> : <Briefcase size={18} color="var(--warning)"/>}
+                      </div>
+                      <div className="glass-panel" style={{ flex: 1, minWidth: 0, padding: '20px', background: 'rgba(255,255,255,0.7)', border: 'none', boxShadow: '0 2px 12px rgba(0,0,0,0.03)' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-main)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {item.type === 'EMAIL' ? 'メール (手動記録)' : item.type === 'CALL' ? '電話' : '商談'}
+                            <span style={{ color: 'var(--primary)', marginLeft: '8px' }}>@{item.customerName}</span>
+                          </span>
+                          <button onClick={() => handleEditInteraction(item)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', padding: '4px' }} title="編集">
+                            <Edit2 size={14} />
+                          </button>
+                        </div>
+                        <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: '500', flexShrink: 0 }}>
+                          {new Date(item.date).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        </div>
+                        <p style={{ fontSize: '14px', lineHeight: '1.6', color: 'var(--text-main)', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{item.notes}</p>
+                      </div>
+                    </div>
+                  );
+                } else {
+                  const isExpanded = expandedId === item.id;
+                  const isSent = item.labelIds?.includes('SENT');
+                  return (
+                    <div key={`email-${item.id}`} style={{ display: 'flex', gap: '20px', position: 'relative', padding: '24px 0', minWidth: 0 }}>
+                      <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(0,0,0,0.1)', zIndex: 1, flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+                        <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: isSent ? 'rgba(79,70,229,0.1)' : 'rgba(234,67,53,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                           {isSent ? <ArrowUpRight size={14} color="var(--primary)" /> : <ArrowDownLeft size={14} color="#EA4335" />}
+                        </div>
+                      </div>
+                      <div className="glass-panel" style={{ flex: 1, minWidth: 0, background: isExpanded ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.6)', border: '1px solid rgba(0,0,0,0.04)', boxShadow: '0 2px 12px rgba(0,0,0,0.03)', overflow: 'hidden', transition: 'all 0.2s' }}>
+                        <button onClick={() => setExpandedId(isExpanded ? null : item.id)} style={{ width: '100%', padding: '16px 20px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', minWidth: 0, overflow: 'hidden' }}>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+                              <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '6px', fontWeight: '700', background: isSent ? 'var(--primary)' : '#EA4335', color: 'white', flexShrink: 0 }}>
+                                {isSent ? '送信' : '受信'}
+                              </span>
+                              <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
+                                {isSent ? `To: ${extractName(item.to)}` : `From: ${extractName(item.from)}`}
+                                <span style={{ color: 'var(--primary)', marginLeft: '8px', flexShrink: 0 }}>@{item.customerName}</span>
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
+                              <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: '500' }}>
+                                {new Date(item.date).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                              {isExpanded ? <ChevronUp size={16} color="var(--text-muted)" /> : <ChevronDown size={16} color="var(--text-muted)" />}
+                            </div>
+                          </div>
+                          <p style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-main)', marginBottom: isExpanded ? '12px' : '4px', whiteSpace: isExpanded ? 'normal' : 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', wordBreak: 'break-all' }}>
+                            {item.subject || '(件名なし)'}
+                          </p>
+                          {!isExpanded && (
+                            <p style={{ fontSize: '13px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {item.snippet}
+                            </p>
+                          )}
+                        </button>
+                        
+                        {isExpanded && (
+                          <div style={{ padding: '0 20px 20px', cursor: 'default' }}>
+                            <div style={{ fontSize: '14px', lineHeight: '1.7', color: 'var(--text-main)', whiteSpace: 'pre-wrap', wordBreak: 'break-all', padding: '16px', background: 'rgba(0,0,0,0.02)', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.03)', maxHeight: '400px', overflowY: 'auto' }}>
+                              {item.body || item.snippet || '(本文なし)'}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+              })}
+            </div>
+          )}
         </div>
       </div>
 

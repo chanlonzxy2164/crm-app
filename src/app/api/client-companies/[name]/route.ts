@@ -16,7 +16,8 @@ export async function GET(request: Request, context: { params: Promise<{name: st
       where: { companyId: session.user.companyId, companyName },
       include: {
         deals: { orderBy: { createdAt: 'desc' } },
-        interactions: { orderBy: { date: 'desc' }, take: 10 },
+        interactions: { orderBy: { date: 'desc' }, take: 20 },
+        emailMessages: { orderBy: { date: 'desc' }, take: 20 },
         user: { select: { id: true, name: true } }
       }
     });
