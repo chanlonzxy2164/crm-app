@@ -243,7 +243,10 @@ export default function CustomerEmailSection({ customerId, customerEmail, custom
                               {isSent ? '送信' : '受信'}
                             </span>
                             <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {isSent ? `To: ${extractName(item.to)}` : `From: ${extractName(item.from)}`}
+                              {isSent ? `To: ${customerName}` : `From: ${customerName}`}
+                              <span style={{ color: 'var(--text-muted)', marginLeft: '8px', fontWeight: 'normal', fontSize: '12px' }}>
+                                ({isSent ? '送信' : '受信'}: {item.user?.name || '自社担当'})
+                              </span>
                             </span>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>

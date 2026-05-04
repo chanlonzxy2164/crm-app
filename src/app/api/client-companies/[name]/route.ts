@@ -17,7 +17,7 @@ export async function GET(request: Request, context: { params: Promise<{name: st
       include: {
         deals: { orderBy: { createdAt: 'desc' } },
         interactions: { orderBy: { date: 'desc' }, take: 20 },
-        emailMessages: { orderBy: { date: 'desc' }, take: 20 },
+        emailMessages: { orderBy: { date: 'desc' }, take: 20, include: { user: { select: { id: true, name: true } } } },
         user: { select: { id: true, name: true } }
       }
     });

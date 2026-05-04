@@ -18,9 +18,12 @@ export async function GET(req: any) {
   const limit = parseInt(searchParams.get('limit') || '20');
   const skip = (page - 1) * limit;
 
-  const where: any = {
-    userId: token.id as string,
-  };
+  const where: any = {};
+  if (token.companyId) {
+    where.user = { companyId: token.companyId as string };
+  } else {
+    where.userId = token.id as string;
+  }
 
   if (customerId) {
     where.customerId = customerId;
@@ -35,6 +38,9 @@ export async function GET(req: any) {
       include: {
         customer: {
           select: { id: true, firstName: true, lastName: true, companyName: true },
+        },
+        user: {
+          select: { id: true, name: true, email: true },
         },
       },
     }),
