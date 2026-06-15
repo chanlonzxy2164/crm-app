@@ -2,9 +2,9 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
-import { LayoutDashboard, Users, Briefcase, CheckSquare, MessageSquare, BarChart3, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, Briefcase, CheckSquare, MessageSquare, BarChart3, Settings, LogOut, X } from 'lucide-react';
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean; onClose?: () => void }) {
   const pathname = usePathname();
   const { data: session } = useSession();
 
@@ -19,10 +19,15 @@ export default function Sidebar() {
   ];
 
   return (
-    <nav className="glass-nav glass-panel">
-      <div style={{ padding: '0 16px', marginBottom: '32px' }}>
-        <h1 style={{ fontSize: '24px', fontWeight: '700', color: 'var(--primary)' }}>CRM Plus</h1>
-        <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>ガラスモーフィズム・デザイン</p>
+    <nav className={`glass-nav glass-panel ${isOpen ? 'mobile-open' : ''}`}>
+      <div style={{ padding: '0 16px', marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <h1 style={{ fontSize: '24px', fontWeight: '700', color: 'var(--primary)' }}>CRM Plus</h1>
+          <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>ガラスモーフィズム・デザイン</p>
+        </div>
+        <button onClick={onClose} className="sidebar-close-btn" aria-label="メニューを閉じる" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '4px' }}>
+          <X size={22} />
+        </button>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
@@ -36,6 +41,7 @@ export default function Sidebar() {
             <Link
               key={link.path}
               href={link.path}
+              onClick={onClose}
               className={`nav-link ${isActive ? 'active' : ''}`}
             >
               <Icon size={20} />

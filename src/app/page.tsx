@@ -254,7 +254,7 @@ export default function Home() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <h1 className="page-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
             <LayoutTemplate size={28} color="var(--primary)" /> ダッシュボード
@@ -264,7 +264,7 @@ export default function Home() {
         
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
           {/* コントロール群 (対象, 期間, 比較) */}
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.6)', padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
               <UserCircle size={14} color="var(--primary)" />
               <select value={targetUser} onChange={e => setTargetUser(e.target.value)} style={{ background: 'transparent', border: 'none', fontSize: '13px', outline: 'none', fontWeight: 'bold' }}>

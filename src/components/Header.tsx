@@ -1,9 +1,9 @@
 "use client";
-import { Search, Bell } from "lucide-react";
+import { Search, Bell, Menu } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function Header() {
+export default function Header({ onMenuClick }: { onMenuClick?: () => void }) {
   const [query, setQuery] = useState("");
   const router = useRouter();
 
@@ -16,6 +16,14 @@ export default function Header() {
 
   return (
     <header className="glass-header glass-panel">
+      <button
+        type="button"
+        className="mobile-menu-btn icon-btn"
+        onClick={onMenuClick}
+        aria-label="メニューを開く"
+      >
+        <Menu size={20} />
+      </button>
       <form onSubmit={handleSearch} className="header-search" style={{ margin: 0 }}>
         <Search size={18} color="var(--text-muted)" onClick={handleSearch} style={{ cursor: 'pointer' }} />
         <input 
